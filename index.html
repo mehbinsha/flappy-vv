@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VV Bird</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            background-color: #333;
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #gameContainer {
+            position: relative;
+            width: 360px;
+            height: 640px;
+        }
+        #gameCanvas {
+            background-color: #87CEEB;
+            border: 3px solid black;
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+         #gameOverScreen h2 {
+            margin: 20px 0;
+        }
+        #gameOverImage, #gameOverImage2 {
+            width: 80%;
+            max-width: 250px;
+            border-radius: 10px;
+        }
+        #gameOverScreen p {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>VV Bird</h1>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="360" height="640"></canvas>
+
+        <div id="gameOverScreen" style="display: none;">
+            <img id="gameOverImage" src="vv.png" alt="Try Again">
+            <h2>Game Over!!!</h2>
+            <img id="gameOverImage2" src="bye.png" alt="Extra Image">
+            
+        </div>
+    </div>
+
+    <script src="fl.js"></script>
+</body>
+</html>
