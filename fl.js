@@ -45,12 +45,15 @@ window.onload = function() {
     // Pipes & Game State
     let pipeArray = [], pipeWidth = 64, pipeHeight = 512, pipeX = boardWidth;
 
-    // Difficulty starts gently and increases a little with every pipe.
-    const startingOpeningSpace = 240;
-    const minimumOpeningSpace = 155;
-    const gapReductionPerPipe = 5;
+    // Start at a relaxed pace, then increase the challenge gradually.
+    const startingOpeningSpace = 245;
+    const minimumOpeningSpace = 175;
+    const gapReductionPerPipe = 3;
     const pipeEdgeMargin = 45;
-    let velocityX = -2, velocityY = 0, gravity = 0.4;
+    const startingScrollSpeed = 1.6;
+    const maximumScrollSpeed = 2.35;
+    const speedIncreasePerPipe = 0.035;
+    let velocityX = -startingScrollSpeed, velocityY = 0, gravity = 0.4;
     let gameOver = false, score = 0, gameStarted = false;
     let highScore = Number(localStorage.getItem("vvBirdHighScore")) || 0;
     let pipeCount = 0; // --- NEW: Counter to track pipes for alternating coins ---
@@ -139,11 +142,20 @@ window.onload = function() {
         const easiestGapTop = (boardHeight - startingOpeningSpace) / 2;
         const fullRangeMin = pipeEdgeMargin;
         const fullRangeMax = boardHeight - openingSpace - pipeEdgeMargin;
-        const difficulty = Math.min((pipeCount - 1) / 15, 1);
+        const difficulty = Math.min((pipeCount - 1) / 24, 1);
         const allowedMin = easiestGapTop + (fullRangeMin - easiestGapTop) * difficulty;
         const allowedMax = easiestGapTop + (fullRangeMax - easiestGapTop) * difficulty;
         const gapTop = allowedMin + Math.random() * Math.max(0, allowedMax - allowedMin);
         const randomPipeY = gapTop - pipeHeight;
+
+        // Pipes and coins share one speed so the coin remains safely centred
+        // in its opening. The cap keeps late-game difficulty reasonable.
+        const scrollSpeed = Math.min(
+            maximumScrollSpeed,
+            startingScrollSpeed + (pipeCount - 1) * speedIncreasePerPipe
+        );
+        velocityX = -scrollSpeed;
+
         let topPipe = { x: pipeX, y: randomPipeY, width: pipeWidth, height: pipeHeight, passed: false, isTop: true };
         pipeArray.push(topPipe);
 
@@ -213,6 +225,7 @@ window.onload = function() {
             music1.currentTime = 0;
             music2.currentTime = 0;
             pipeCount = 0; // --- NEW: Reset the counter on restart ---
+            velocityX = -startingScrollSpeed;
             gameOverScreen.style.display = "none";
             context.clearRect(0, 0, boardWidth, boardHeight);
         }
