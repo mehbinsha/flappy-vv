@@ -15,6 +15,9 @@ window.onload = function() {
     let birdX = boardWidth / 8;
     let birdY = boardHeight / 2;
     let bird = { x: birdX, y: birdY, width: birdWidth, height: birdHeight };
+    // The source image has transparent/empty space around the visible face.
+    // Use a smaller box for pipe collisions so near misses remain safe.
+    const birdHitboxPadding = { left: 22, right: 22, top: 8, bottom: 8 };
     let birdImg;
 
     // --- NEW: Load two coin images ---
@@ -40,10 +43,16 @@ window.onload = function() {
     };
 
     // Pipes & Game State
-    let pipeArray = [], pipeWidth = 64, pipeHeight = 512, pipeX = boardWidth, pipeY = 0;
-    let openingSpace = boardHeight / 4;
+    let pipeArray = [], pipeWidth = 64, pipeHeight = 512, pipeX = boardWidth;
+
+    // Difficulty starts gently and increases a little with every pipe.
+    const startingOpeningSpace = 240;
+    const minimumOpeningSpace = 155;
+    const gapReductionPerPipe = 5;
+    const pipeEdgeMargin = 45;
     let velocityX = -2, velocityY = 0, gravity = 0.4;
     let gameOver = false, score = 0, gameStarted = false;
+    let highScore = Number(localStorage.getItem("vvBirdHighScore")) || 0;
     let pipeCount = 0; // --- NEW: Counter to track pipes for alternating coins ---
 
     birdImg = new Image();
@@ -69,7 +78,13 @@ window.onload = function() {
             if (gameStarted) pipe.x += velocityX;
             context.fillStyle = "green";
             context.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
-            if (detectCollision(bird, pipe)) triggerGameOver();
+            if (detectCollision(getBirdHitbox(), pipe)) triggerGameOver();
+
+            // Count each pair once when its top pipe passes the bird.
+            if (pipe.isTop && !pipe.passed && pipe.x + pipe.width < bird.x) {
+                pipe.passed = true;
+                addScore(1);
+            }
         }
         
         // Coin Logic
@@ -90,7 +105,7 @@ window.onload = function() {
 
             if (!coin.collected && detectCollision(bird, coin)) {
                 coin.collected = true;
-                score += 5;
+                addScore(5);
                 coinSound.currentTime = 0;
                 coinSound.play();
             }
@@ -102,7 +117,12 @@ window.onload = function() {
         // Score
         context.fillStyle = "white";
         context.font = "45px sans-serif";
+        context.textAlign = "left";
         context.fillText(score, 5, 45);
+        context.font = "20px sans-serif";
+        context.textAlign = "right";
+        context.fillText(`Best: ${highScore}`, boardWidth - 8, 30);
+        context.textAlign = "left";
     }
 
     function placePipes() {
@@ -110,11 +130,24 @@ window.onload = function() {
         
         pipeCount++; // --- NEW: Increment the pipe counter each time ---
 
-        let randomPipeY = pipeY - pipeHeight / 4 - Math.random() * (pipeHeight / 2);
-        let topPipe = { x: pipeX, y: randomPipeY, width: pipeWidth, height: pipeHeight, passed: false };
+        // The first pipes have a large, nearly centred opening. Later openings
+        // become smaller and can appear across more of the screen's height.
+        const openingSpace = Math.max(
+            minimumOpeningSpace,
+            startingOpeningSpace - (pipeCount - 1) * gapReductionPerPipe
+        );
+        const easiestGapTop = (boardHeight - startingOpeningSpace) / 2;
+        const fullRangeMin = pipeEdgeMargin;
+        const fullRangeMax = boardHeight - openingSpace - pipeEdgeMargin;
+        const difficulty = Math.min((pipeCount - 1) / 15, 1);
+        const allowedMin = easiestGapTop + (fullRangeMin - easiestGapTop) * difficulty;
+        const allowedMax = easiestGapTop + (fullRangeMax - easiestGapTop) * difficulty;
+        const gapTop = allowedMin + Math.random() * Math.max(0, allowedMax - allowedMin);
+        const randomPipeY = gapTop - pipeHeight;
+        let topPipe = { x: pipeX, y: randomPipeY, width: pipeWidth, height: pipeHeight, passed: false, isTop: true };
         pipeArray.push(topPipe);
 
-        let bottomPipe = { x: pipeX, y: randomPipeY + pipeHeight + openingSpace, width: pipeWidth, height: pipeHeight, passed: false };
+        let bottomPipe = { x: pipeX, y: randomPipeY + pipeHeight + openingSpace, width: pipeWidth, height: pipeHeight, isTop: false };
         pipeArray.push(bottomPipe);
         
         // --- NEW: Check the counter to decide which coin to place ---
@@ -140,6 +173,23 @@ window.onload = function() {
     function detectCollision(a, b) {
         return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
     }
+
+    function addScore(points) {
+        score += points;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("vvBirdHighScore", highScore);
+        }
+    }
+
+    function getBirdHitbox() {
+        return {
+            x: bird.x + birdHitboxPadding.left,
+            y: bird.y + birdHitboxPadding.top,
+            width: bird.width - birdHitboxPadding.left - birdHitboxPadding.right,
+            height: bird.height - birdHitboxPadding.top - birdHitboxPadding.bottom
+        };
+    }
     
     function triggerGameOver() {
         if (!gameOver) {
@@ -154,6 +204,7 @@ window.onload = function() {
     function moveBird(e) {
         if (gameOver) {
             bird.y = birdY;
+            velocityY = 0;
             pipeArray = [];
             coinArray = [];
             score = 0;
@@ -164,9 +215,6 @@ window.onload = function() {
             pipeCount = 0; // --- NEW: Reset the counter on restart ---
             gameOverScreen.style.display = "none";
             context.clearRect(0, 0, boardWidth, boardHeight);
-            context.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
-            context.fillText(score, 5, 45);
-            return;
         }
 
         if (!gameStarted) {
